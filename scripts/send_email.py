@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
 Paper Radar - Email delivery
-Sends the daily FILTERED report (your topics) to your inbox, with the GENERAL
-report attached as a .md file. Uses only the Python standard library (smtplib).
+Sends the daily FILTERED report (your topics) to your inbox as a nicely rendered
+HTML email (with a plain-text fallback), and attaches the GENERAL report as a
+self-contained .html file you can open in the browser.
+
+Uses only the Python standard library (smtplib + a tiny Markdown->HTML converter),
+so there are no external dependencies.
 
 Reads everything from environment variables so no secrets live in the repo:
 
@@ -19,8 +23,10 @@ notice and exits 0 (so local runs and unconfigured forks don't fail the build).
 """
 
 import os
+import re
 import sys
 import ssl
+import html
 import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
@@ -33,6 +39,94 @@ def today_utc():
 def filtered_has_papers(text):
     """Heuristic: the report has real papers if it contains a paper heading."""
     return "\n### " in text
+
+
+# ─────────────────────────────────────────────
+#  MINIMAL MARKDOWN -> HTML (tailored to the report format)
+# ─────────────────────────────────────────────
+
+def _inline(text):
+    """Render inline Markdown (links, bold, code, italics) to HTML, safely."""
+    text = html.escape(text)
+    # [label](url)
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)',
+                  r'<a href="\2" style="color:#2563eb;text-decoration:none;">\1</a>',
+                  text)
+    # **bold**
+    text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+    # `code`
+    text = re.sub(r'`([^`]+)`',
+                  r'<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;'
+                  r'font-family:Consolas,Menlo,monospace;font-size:0.9em;">\1</code>',
+                  text)
+    # _italic_ (only when bounded by non-word chars, so URLs/words are untouched)
+    text = re.sub(r'(?<!\w)_([^_]+)_(?!\w)', r'<em>\1</em>', text)
+    return text
+
+
+def md_to_html_body(md):
+    """Convert the subset of Markdown used by the reports into HTML."""
+    out = []
+    para, quote = [], []
+
+    def flush_para():
+        if para:
+            out.append("<p style='margin:8px 0;line-height:1.5;'>"
+                       + "<br>".join(_inline(p) for p in para) + "</p>")
+            para.clear()
+
+    def flush_quote():
+        if quote:
+            out.append(
+                "<blockquote style='margin:8px 0;padding:8px 14px;border-left:4px solid "
+                "#cbd5e1;background:#f8fafc;color:#475569;'>"
+                + "<br>".join(_inline(q) for q in quote) + "</blockquote>")
+            quote.clear()
+
+    for raw in md.split("\n"):
+        s = raw.strip()
+        if not s:
+            flush_para(); flush_quote()
+            continue
+        if s.startswith("### "):
+            flush_para(); flush_quote()
+            out.append("<h3 style='margin:18px 0 6px;font-size:17px;color:#0f172a;'>"
+                       + _inline(s[4:]) + "</h3>")
+        elif s.startswith("## "):
+            flush_para(); flush_quote()
+            out.append("<h2 style='margin:26px 0 8px;font-size:20px;color:#1e3a8a;"
+                       "border-bottom:2px solid #e2e8f0;padding-bottom:4px;'>"
+                       + _inline(s[3:]) + "</h2>")
+        elif s.startswith("# "):
+            flush_para(); flush_quote()
+            out.append("<h1 style='margin:0 0 10px;font-size:24px;color:#0f172a;'>"
+                       + _inline(s[2:]) + "</h1>")
+        elif s == "---":
+            flush_para(); flush_quote()
+            out.append("<hr style='border:none;border-top:1px solid #e2e8f0;margin:16px 0;'>")
+        elif s.startswith(">"):
+            flush_para()
+            quote.append(s.lstrip(">").strip())
+        else:
+            flush_quote()
+            para.append(s)
+
+    flush_para(); flush_quote()
+    return "\n".join(out)
+
+
+def wrap_html(inner, title):
+    """Wrap rendered body in a minimal, email-client-friendly HTML document."""
+    return f"""<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{html.escape(title)}</title></head>
+<body style="margin:0;background:#f1f5f9;">
+<div style="max-width:760px;margin:0 auto;padding:24px;
+            font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+            color:#0f172a;background:#ffffff;">
+{inner}
+</div></body></html>"""
 
 
 def main():
@@ -68,28 +162,42 @@ def main():
         else f"📡 Paper Radar — {today} · sin papers destacados en tus temas hoy"
     )
 
+    intro_text = (
+        "Tu reporte filtrado de Paper Radar (solo tus temas, alta precisión).\n"
+        "El reporte general completo va adjunto.\n"
+        f"{'=' * 60}\n\n"
+    )
+    intro_html = (
+        "<p style='margin:0 0 16px;color:#64748b;font-size:14px;'>"
+        "Tu reporte filtrado de Paper Radar (solo tus temas, alta precisión). "
+        "El reporte general completo va adjunto como archivo <code>.html</code>.</p>"
+        "<hr style='border:none;border-top:2px solid #e2e8f0;margin:0 0 16px;'>"
+    )
+
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = mail_from
     msg["To"] = ", ".join(mail_to)
 
-    # Plain-text body = the filtered report (Markdown reads fine as text).
-    intro = (
-        "Tu reporte filtrado de Paper Radar (solo tus temas, alta precisión).\n"
-        "El reporte general completo va adjunto.\n"
-        f"{'=' * 60}\n\n"
-    )
-    msg.set_content(intro + filtered_md)
+    # Plain-text fallback (raw Markdown reads fine as text)
+    msg.set_content(intro_text + filtered_md)
 
-    # Attach the general report so it's there if you want the wider view.
+    # HTML alternative (this is what renders nicely in Gmail/Outlook/etc.)
+    html_body = wrap_html(intro_html + md_to_html_body(filtered_md),
+                          f"Paper Radar — {today}")
+    msg.add_alternative(html_body, subtype="html")
+
+    # Attach the general report as a rendered, self-contained .html file
     if os.path.exists(gen_path):
         with open(gen_path, encoding="utf-8") as f:
             general_md = f.read()
+        general_html = wrap_html(md_to_html_body(general_md),
+                                 f"Paper Radar General — {today}")
         msg.add_attachment(
-            general_md.encode("utf-8"),
+            general_html.encode("utf-8"),
             maintype="text",
-            subtype="markdown",
-            filename=f"{today}_general.md",
+            subtype="html",
+            filename=f"{today}_general.html",
         )
 
     context = ssl.create_default_context()
