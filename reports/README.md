@@ -9,9 +9,7 @@ Reportes diarios de papers científicos seleccionados por relevancia e impacto p
 
 | Fecha | Reporte General | Reporte Filtrado |
 |-------|----------------|-----------------|
-
-> _Aún no hay reportes. El primero se generará en la próxima corrida del workflow
-> (o ejecútalo manualmente desde la pestaña **Actions** → **Run workflow**)._
+| 2026-06-26 | [Reporte General](2026-06-26_general.md) | [Reporte Filtrado](2026-06-26_filtrado.md) |
 
 ---
 
