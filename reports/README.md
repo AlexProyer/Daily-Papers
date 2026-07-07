@@ -9,6 +9,7 @@ Reportes diarios de papers científicos seleccionados por relevancia e impacto p
 
 | Fecha | Reporte General | Reporte Filtrado |
 |-------|----------------|-----------------|
+| 2026-07-07 | [Reporte General](2026-07-07_general.md) | [Reporte Filtrado](2026-07-07_filtrado.md) |
 | 2026-07-06 | [Reporte General](2026-07-06_general.md) | [Reporte Filtrado](2026-07-06_filtrado.md) |
 | 2026-07-05 | [Reporte General](2026-07-05_general.md) | [Reporte Filtrado](2026-07-05_filtrado.md) |
 | 2026-07-04 | [Reporte General](2026-07-04_general.md) | [Reporte Filtrado](2026-07-04_filtrado.md) |
