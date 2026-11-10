@@ -9,6 +9,7 @@ Reportes diarios de papers científicos seleccionados por relevancia e impacto p
 
 | Fecha | Reporte General | Reporte Filtrado |
 |-------|----------------|-----------------|
+| 2026-11-10 | [Reporte General](2026-11-10_general.md) | [Reporte Filtrado](2026-11-10_filtrado.md) |
 | 2026-11-09 | [Reporte General](2026-11-09_general.md) | [Reporte Filtrado](2026-11-09_filtrado.md) |
 | 2026-11-08 | [Reporte General](2026-11-08_general.md) | [Reporte Filtrado](2026-11-08_filtrado.md) |
 | 2026-11-07 | [Reporte General](2026-11-07_general.md) | [Reporte Filtrado](2026-11-07_filtrado.md) |
@@ -38,7 +39,6 @@ Reportes diarios de papers científicos seleccionados por relevancia e impacto p
 | 2026-10-13 | [Reporte General](2026-10-13_general.md) | [Reporte Filtrado](2026-10-13_filtrado.md) |
 | 2026-10-12 | [Reporte General](2026-10-12_general.md) | [Reporte Filtrado](2026-10-12_filtrado.md) |
 | 2026-10-11 | [Reporte General](2026-10-11_general.md) | [Reporte Filtrado](2026-10-11_filtrado.md) |
-| 2026-10-10 | [Reporte General](2026-10-10_general.md) | [Reporte Filtrado](2026-10-10_filtrado.md) |
 
 ---
 
